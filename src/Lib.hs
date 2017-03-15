@@ -9,7 +9,7 @@ import Control.Monad (mapM)
 import Numeric.Probability.Distribution (T, fromFreqs)
 
 data Player = Player { wins :: Int, corps :: Int } deriving (Eq, Show, Ord)
-data Tournament = Tournament { rounds :: Int, players :: [Player], mispairs :: [Int] }
+data Tournament = Tournament { rounds :: Int, players :: [Player], corpWin :: Rational, mispairs :: [Int] }
 
 type Pairing = [Player] -> [(Player, Player)]
 
@@ -44,13 +44,13 @@ pairMinimising' ps = (p1, p2):pairMinimising' (delete p1 $ delete p2 ps)
 scoreMismatches :: [(Player, Player)] -> [Int]
 scoreMismatches ps = map (\(p1, p2) -> abs $ wins p1 - wins p2) ps
 
-fight :: MonadRandom m => [(Player, Player)] -> m [Player]
-fight ps = mapM winners ps >>= return . concat
+fight :: MonadRandom m => Rational -> [(Player, Player)] -> m [Player]
+fight p ps = mapM winners ps >>= return . concat
   where winners :: MonadRandom m => (Player, Player) -> m [Player]
         winners (p1, p2) = do let c1 = corps p1
                               let c2 = corps p2
                               p1Corp :: Bool <- if (c1 == c2) then getRandom else (return $ c1 < c2)
-                              corpWins :: Bool <- fromList [(True, 60), (False, 40)]
+                              corpWins :: Bool <- fromList [(True, p), (False, 1-p)]
                               let p1Wins = p1Corp == corpWins
                               let p1' = if p1Wins then p1 { wins = (wins p1) + 1 } else p1
                               let p2' = if p1Wins then p2 else p2 { wins = (wins p2) + 1 }
@@ -60,11 +60,11 @@ fight ps = mapM winners ps >>= return . concat
 
 step :: MonadRandom m => Pairing -> Tournament -> m Tournament
 step pairFn t = let pairing = pairFn $ players t in
-  do ps' <- fight pairing
-     return Tournament { rounds = rounds t + 1, players = ps', mispairs = mispairs t ++ scoreMismatches pairing }
+  do ps' <- fight (corpWin t) pairing
+     return Tournament { rounds = rounds t + 1, players = ps', corpWin = corpWin t, mispairs = mispairs t ++ scoreMismatches pairing }
 
-empty :: Int -> Tournament
-empty n = Tournament { rounds = 0, players = replicate n (Player 0 0), mispairs = [] }
+empty :: Int -> Rational -> Tournament
+empty n p = Tournament { rounds = 0, players = replicate n (Player 0 0), corpWin = p, mispairs = [] }
 
 freqs :: Ord a => [a] -> [(a, Int)]
 freqs as = map (\ls -> (head ls, length ls)) (group (sort as))
