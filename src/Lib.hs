@@ -29,7 +29,6 @@ score :: Player -> Player -> Int
 score p1 p2 = abs (corps p1 - corps p2)
 
 pairMinimising :: Pairing
-pairMinimising [] = []
 pairMinimising ps = if atStart then pair ps else pairMinimising' ps
   where atStart = all (\p -> wins p == 0) ps
 
