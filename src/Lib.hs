@@ -1,12 +1,14 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Lib ( Tournament, Pairing, rounds, players, mispairs, step, pair, pairMinimising, empty, winDist, corpDist, mispairDist) where
+module Lib ( Tournament, Pairing, rounds, players, mispairs, step, pair, pairMinimising, empty, winDist, corpDist, mispairDist, (Percentage.//)) where
 
 import Data.Function (on)
 import Data.List (sortBy, sort, group, delete, maximumBy)
 import Control.Monad.Random (MonadRandom, getRandom, fromList)
 import Control.Monad (mapM)
-import Numeric.Probability.Distribution (T, fromFreqs)
+import Numeric.Probability.Distribution (fromFreqs)
+import qualified Numeric.Probability.Distribution as Dist
+import qualified Numeric.Probability.Percentage as Percentage
 
 data Player = Player { wins :: Int, corps :: Int } deriving (Eq, Show, Ord)
 data Tournament = Tournament { rounds :: Int, players :: [Player], corpWin :: Rational, mispairs :: [Int] }
@@ -69,16 +71,16 @@ empty n p = Tournament { rounds = 0, players = replicate n (Player 0 0), corpWin
 freqs :: Ord a => [a] -> [(a, Int)]
 freqs as = map (\ls -> (head ls, length ls)) (group (sort as))
 
-dist :: Ord a => [a] -> T Double a
+dist :: Ord a => [a] -> Dist.T Percentage.T a
 dist ps = fromFreqs (map (\(a, l) -> (a, fromIntegral l)) $ freqs ps)
 
-winDist :: [Player] -> T Double Int
+winDist :: [Player] -> Dist.T Percentage.T Int
 winDist = dist . map wins
 
-corpDist :: [Player] -> T Double Int
+corpDist :: [Player] -> Dist.T Percentage.T Int
 corpDist = dist . map corps
 
-mispairDist :: [Tournament] -> T Double Int
+mispairDist :: [Tournament] -> Dist.T Percentage.T Int
 mispairDist = dist . concatMap mispairs
 
 instance Show Tournament where
